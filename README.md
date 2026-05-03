@@ -1,4 +1,4 @@
-# Typing Test
+# Typing Pro
 
 A minimalist, high-performance typing test application designed for speed and precision. Built with a focus on tactile feedback and a "mechanical keyboard" aesthetic, this tool helps users track and improve their typing metrics across multiple difficulties and game modes.
 
