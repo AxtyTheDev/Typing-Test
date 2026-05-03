@@ -27,8 +27,7 @@ A minimalist, high-performance typing test application designed for speed and pr
     ```bash
     git clone https://github.com/AxtyTheDev/Typing-Test.git
     ```
-2.  **Add your Screenshot:** Take a screenshot of your project, name it `screenshot.png`, and place it in the same folder.
-3.  **Open and Play:** Open `typing_test.html` in any modern web browser and start typing!
+2.  **Open and Play:** Open `index.html` in any modern web browser and start typing!
 
 ## ⌨️ Shortcuts
 
