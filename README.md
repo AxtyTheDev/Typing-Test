@@ -1,8 +1,8 @@
-# Typing Pro - Local Performance Lab
+# Typing Test
 
 A minimalist, high-performance typing test application designed for speed and precision. Built with a focus on tactile feedback and a "mechanical keyboard" aesthetic, this tool helps users track and improve their typing metrics across multiple difficulties and game modes.
 
-![Typing Pro Screenshot](screenshot.png)
+![Screenshott](screenshot.png)
 
 ## ✨ Features
 
@@ -25,7 +25,7 @@ A minimalist, high-performance typing test application designed for speed and pr
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/typing-pro.git](https://github.com/YOUR_USERNAME/typing-pro.git)
+    git clone https://github.com/AxtyTheDev/Typing-Test.git
     ```
 2.  **Add your Screenshot:** Take a screenshot of your project, name it `screenshot.png`, and place it in the same folder.
 3.  **Open and Play:** Open `typing_test.html` in any modern web browser and start typing!
