@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains+Mono', monospace; }
+        #text-display { white-space: pre-wrap; word-break: break-word; }
+        .char {
+            position: relative;
+            display: inline-block;
+            transition: color 0.1s ease, transform 0.1s ease;
+            min-width: 0.3em;
+        }
+        .char.space.current { background-color: rgba(96, 165, 250, 0.2); border-radius: 4px; }
+        .char.correct { color: #4ade80; text-shadow: 0 0 8px rgba(74, 222, 128, 0.3); }
+        .char.incorrect { color: #f87171; background-color: rgba(248, 113, 113, 0.15); border-radius: 2px; }
+        .char.current { color: #60a5fa; }
+        .char.current::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #60a5fa;
+            border-radius: 2px;
+            animation: blink 0.8s infinite;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        .shake { animation: shake 0.15s ease-in-out 0s 2; }
+        .stats-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .difficulty-btn.active, .mode-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="max-w-4xl w-full space-y-6">
+        <!-- Header & Config -->
+        <div class="flex flex-col gap-6">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-center md:text-left">
+                    <h1 class="text-4xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">TYPING PRO</h1>
+                    <p class="text-slate-500 text-sm font-medium">OFFLINE PERFORMANCE LAB</p>
+                </div>
+                
+                <!-- Difficulty -->
+                <div class="flex bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800">
+                    <button onclick="setDifficulty('easy')" id="btn-easy" class="difficulty-btn px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white">EASY</button>
+                    <button onclick="setDifficulty('medium')" id="btn-medium" class="difficulty-btn px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white active">MEDIUM</button>
+                    <button onclick="setDifficulty('hard')" id="btn-hard" class="difficulty-btn px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white">HARD</button>
+                </div>
+            </div>
+
+            <!-- Mode Selector -->
+            <div class="flex justify-center md:justify-start">
+                <div class="flex bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800">
+                    <button onclick="setMode('standard')" id="mode-standard" class="mode-btn px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active">STANDARD</button>
+                    <button onclick="setMode('sprint')" id="mode-sprint" class="mode-btn px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white">60s SPRINT</button>
+                    <button onclick="setMode('sudden')" id="mode-sudden" class="mode-btn px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white">SUDDEN DEATH</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-3 gap-6">
+            <div class="stats-card p-6 rounded-3xl text-center">
+                <div class="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Speed</div>
+                <div id="wpm" class="text-4xl font-black text-blue-400">0</div>
+                <div class="text-[10px] text-slate-600">WPM</div>
+            </div>
+            <div class="stats-card p-6 rounded-3xl text-center">
+                <div class="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Accuracy</div>
+                <div id="accuracy" class="text-4xl font-black text-emerald-400">100%</div>
+                <div class="text-[10px] text-slate-600">ACC</div>
+            </div>
+            <div class="stats-card p-6 rounded-3xl text-center">
+                <div class="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1" id="timer-label">Time</div>
+                <div id="timer" class="text-4xl font-black text-amber-400">0s</div>
+                <div class="text-[10px] text-slate-600" id="timer-sub">ELAPSED</div>
+            </div>
+        </div>
+
+        <!-- Typing Area -->
+        <div id="typing-container" class="relative stats-card p-12 rounded-[2.5rem] shadow-2xl transition-all duration-300">
+            <div id="text-display" class="mono text-3xl leading-[1.8] text-slate-600 select-none"></div>
+            <input type="text" id="typing-input" class="absolute inset-0 w-full h-full opacity-0 cursor-default" autofocus autocomplete="off" spellcheck="false">
+            
+            <div id="focus-message" class="absolute inset-0 flex items-center justify-center bg-slate-950/90 rounded-[2.5rem] transition-opacity opacity-0 pointer-events-none z-10">
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-white mb-1">PAUSED</p>
+                    <p class="text-slate-500 text-sm">Click to resume your session</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex justify-center">
+            <button onclick="initTest()" class="group px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-all flex items-center gap-3 shadow-lg hover:shadow-blue-500/10 active:scale-95">
+                <svg class="group-hover:rotate-180 transition-transform duration-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                RESTART TEST
+            </button>
+        </div>
+
+        <!-- Local High Scores -->
+        <div class="stats-card p-6 rounded-3xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 15 2 2 4-4"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg>
+                    Local Best: <span id="lb-info-label">Medium | Standard</span>
+                </h3>
+                <button onclick="clearScores()" class="text-[10px] text-slate-700 hover:text-red-400 font-bold uppercase transition-colors">Clear Data</button>
+            </div>
+            <div id="leaderboard-list" class="space-y-2">
+                <!-- Scores injected here -->
+            </div>
+        </div>
+
+        <!-- Result Modal -->
+        <div id="result-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden z-50 p-6">
+            <div class="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 max-w-md w-full shadow-3xl text-center space-y-8">
+                <div>
+                    <h2 class="text-4xl font-black text-white" id="modal-title">TEST COMPLETE</h2>
+                    <p class="text-slate-500 mt-2" id="modal-subtitle">Your local high score has been updated.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-6 bg-slate-800/50 rounded-3xl border border-white/5">
+                        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Speed</p>
+                        <p id="final-wpm" class="text-3xl font-black text-blue-400">0</p>
+                        <p class="text-[10px] text-slate-600">WPM</p>
+                    </div>
+                    <div class="p-6 bg-slate-800/50 rounded-3xl border border-white/5">
+                        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Precision</p>
+                        <p id="final-accuracy" class="text-3xl font-black text-emerald-400">0%</p>
+                        <p class="text-[10px] text-slate-600">CORRECT</p>
+                    </div>
+                </div>
+                <button onclick="initTest()" class="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white font-black text-lg rounded-2xl transition-all shadow-xl shadow-blue-900/20 active:scale-95">
+                    TRY AGAIN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Difficulty & Quotes ---
+        const difficultyContent = {
+            easy: ["the sun is hot", "i like my dog", "cats are nice", "it is wet today", "red is a color"],
+            medium: [
+                "The quick brown fox jumps over the lazy dog.",
+                "Programming is about clear thinking and logic.",
+                "Learning to type fast helps you finish work sooner.",
+                "Success is the sum of small efforts repeated daily."
+            ],
+            hard: [
+                "function main() { const x = (Math.random() * 10).toFixed(2); return x; }",
+                "Mr. O'Leary's cat (named 'Waffles') jumped 12.5 feet!",
+                "Does 2 + 2 = 4? In base-10 it does, but binary is 100.",
+                "Access-Control-Allow-Origin: *; Strict-Transport-Security: max-age=31536000;"
+            ]
+        };
+
+        // --- State ---
+        let currentDifficulty = 'medium';
+        let currentMode = 'standard';
+        let currentQuote = "";
+        let timer = 0;
+        let interval = null;
+        let isStarted = false;
+        let mistakes = 0;
+        let lastLength = 0;
+
+        // --- Sound Engine ---
+        const SoundEngine = (() => {
+            let audioCtx = null;
+            const init = () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); };
+            const playClick = (isError = false) => {
+                if (!audioCtx) return;
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = isError ? 'sawtooth' : 'sine';
+                const freq = isError ? 120 : (380 + Math.random() * 80);
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(isError ? 0.15 : 0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            };
+            return { init, playClick };
+        })();
+
+        // --- Core Functions ---
+        function setDifficulty(diff) {
+            currentDifficulty = diff;
+            document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${diff}`).classList.add('active');
+            updateLBInfo();
+            initTest();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            
+            // UI Adjustments for Sprint
+            const label = document.getElementById('timer-label');
+            const sub = document.getElementById('timer-sub');
+            if (mode === 'sprint') {
+                label.innerText = "Time Left";
+                sub.innerText = "REMAINING";
+            } else {
+                label.innerText = "Time";
+                sub.innerText = "ELAPSED";
+            }
+            updateLBInfo();
+            initTest();
+        }
+
+        function updateLBInfo() {
+            document.getElementById('lb-info-label').innerText = 
+                `${currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)} | ${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}`;
+            renderLeaderboard();
+        }
+
+        function initTest() {
+            clearInterval(interval);
+            timer = currentMode === 'sprint' ? 60 : 0;
+            mistakes = 0; isStarted = false; lastLength = 0;
+            
+            const typingInput = document.getElementById('typing-input');
+            typingInput.value = "";
+            typingInput.disabled = false;
+            
+            document.getElementById('wpm').innerText = "0";
+            document.getElementById('accuracy').innerText = "100%";
+            document.getElementById('timer').innerText = currentMode === 'sprint' ? "60s" : "0s";
+            document.getElementById('result-modal').classList.add('hidden');
+            
+            const pool = difficultyContent[currentDifficulty];
+            currentQuote = pool[Math.floor(Math.random() * pool.length)];
+            
+            const textDisplay = document.getElementById('text-display');
+            textDisplay.innerHTML = "";
+            currentQuote.split("").forEach((char, index) => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.classList.add('char');
+                if (char === " ") span.classList.add('space');
+                if (index === 0) span.classList.add('current');
+                textDisplay.appendChild(span);
+            });
+
+            typingInput.focus();
+            SoundEngine.init();
+        }
+
+        function finishTest(isFailed = false) {
+            clearInterval(interval);
+            document.getElementById('typing-input').blur();
+            document.getElementById('typing-input').disabled = true;
+            
+            const wpm = document.getElementById('wpm').innerText;
+            const acc = document.getElementById('accuracy').innerText;
+            
+            document.getElementById('final-wpm').innerText = wpm;
+            document.getElementById('final-accuracy').innerText = acc;
+            
+            const title = document.getElementById('modal-title');
+            const subtitle = document.getElementById('modal-subtitle');
+            
+            if (isFailed && currentMode === 'sudden') {
+                title.innerText = "GAME OVER";
+                subtitle.innerText = "One mistake and it's over in Sudden Death.";
+            } else if (currentMode === 'sprint' && timer <= 0) {
+                title.innerText = "TIME'S UP";
+                subtitle.innerText = "Great effort! Sprint complete.";
+            } else {
+                title.innerText = "TEST COMPLETE";
+                subtitle.innerText = "Local performance record updated.";
+            }
+            
+            saveScore(wpm, acc.replace('%', ''));
+            document.getElementById('result-modal').classList.remove('hidden');
+        }
+
+        // --- Local Storage Logic ---
+        function saveScore(wpm, accuracy) {
+            const scores = JSON.parse(localStorage.getItem('typingProScores') || '[]');
+            scores.push({
+                wpm: parseInt(wpm),
+                accuracy: parseInt(accuracy),
+                difficulty: currentDifficulty,
+                mode: currentMode,
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('typingProScores', JSON.stringify(scores));
+            renderLeaderboard();
+        }
+
+        function clearScores() {
+            localStorage.removeItem('typingProScores');
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const scores = JSON.parse(localStorage.getItem('typingProScores') || '[]');
+            const filtered = scores
+                .filter(s => s.difficulty === currentDifficulty && s.mode === currentMode)
+                .sort((a, b) => b.wpm - a.wpm)
+                .slice(0, 5);
+            
+            const list = document.getElementById('leaderboard-list');
+            if (filtered.length === 0) {
+                list.innerHTML = '<p class="text-sm text-slate-700 italic">No scores saved yet for this configuration.</p>';
+                return;
+            }
+
+            list.innerHTML = filtered.map((s, i) => `
+                <div class="flex items-center justify-between text-sm py-2 border-b border-white/5 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-600 font-bold w-4">${i+1}.</span>
+                        <span class="text-slate-300 font-medium">${s.date}</span>
+                    </div>
+                    <div class="flex gap-6">
+                        <span class="text-blue-400 font-bold">${s.wpm} <small class="text-[10px] text-slate-500">WPM</small></span>
+                        <span class="text-emerald-500/80 font-bold">${s.accuracy}% <small class="text-[10px] text-slate-500">ACC</small></span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- Event Listeners ---
+        const typingInput = document.getElementById('typing-input');
+        
+        typingInput.addEventListener('input', (e) => {
+            if (!isStarted && typingInput.value.length > 0) {
+                isStarted = true;
+                interval = setInterval(() => {
+                    if (currentMode === 'sprint') {
+                        timer--;
+                        if (timer <= 0) {
+                            timer = 0;
+                            document.getElementById('timer').innerText = "0s";
+                            finishTest();
+                            return;
+                        }
+                    } else {
+                        timer++;
+                    }
+                    
+                    document.getElementById('timer').innerText = timer + "s";
+                    const timeInMin = currentMode === 'sprint' ? (60 - timer) / 60 : timer / 60;
+                    const typed = typingInput.value;
+                    const wpm = Math.round((typed.length / 5) / (timeInMin || 0.01)) || 0;
+                    const acc = Math.round(((typed.length - mistakes) / typed.length) * 100) || 100;
+                    
+                    document.getElementById('wpm').innerText = wpm;
+                    document.getElementById('accuracy').innerText = acc + "%";
+                }, 1000);
+            }
+
+            const typedText = typingInput.value;
+            const characters = document.querySelectorAll('.char');
+            const isBackspacing = typedText.length < lastLength;
+            
+            if (!isBackspacing && typedText.length > 0) {
+                const typedChar = typedText[typedText.length - 1];
+                const targetChar = currentQuote[typedText.length - 1];
+                const isIncorrect = typedChar !== targetChar;
+                
+                SoundEngine.playClick(isIncorrect);
+
+                if (isIncorrect) {
+                    if (currentMode === 'sudden') {
+                        finishTest(true);
+                        return;
+                    }
+                    document.getElementById('typing-container').classList.add('shake');
+                    setTimeout(() => document.getElementById('typing-container').classList.remove('shake'), 150);
+                }
+            }
+
+            mistakes = 0;
+            characters.forEach((span, index) => {
+                const char = typedText[index];
+                span.classList.remove('correct', 'incorrect', 'current');
+                if (char == null) {
+                    if (index === typedText.length) span.classList.add('current');
+                } else if (char === span.textContent) {
+                    span.classList.add('correct');
+                } else {
+                    span.classList.add('incorrect');
+                    mistakes++;
+                }
+            });
+
+            lastLength = typedText.length;
+            
+            // Standard Finish
+            if (typedText.length >= currentQuote.length && currentMode !== 'sprint') {
+                finishTest();
+            } else if (typedText.length >= currentQuote.length && currentMode === 'sprint') {
+                // For sprint, just generate a new quote without resetting timer
+                const pool = difficultyContent[currentDifficulty];
+                currentQuote = pool[Math.floor(Math.random() * pool.length)];
+                typingInput.value = "";
+                lastLength = 0;
+                // Re-render display text
+                const textDisplay = document.getElementById('text-display');
+                textDisplay.innerHTML = "";
+                currentQuote.split("").forEach((char, idx) => {
+                    const span = document.createElement('span');
+                    span.textContent = char;
+                    span.classList.add('char');
+                    if (char === " ") span.classList.add('space');
+                    if (idx === 0) span.classList.add('current');
+                    textDisplay.appendChild(span);
+                });
+            }
+        });
+
+        // UI Interactions
+        typingInput.addEventListener('blur', () => {
+            if (document.getElementById('result-modal').classList.contains('hidden')) {
+                document.getElementById('focus-message').style.opacity = "1";
+            }
+        });
+
+        typingInput.addEventListener('focus', () => {
+            document.getElementById('focus-message').style.opacity = "0";
+            SoundEngine.init();
+        });
+
+        // Global hotkey: Escape to restart
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') initTest();
+        });
+
+        window.onload = () => {
+            renderLeaderboard();
+            initTest();
+        };
+    </script>
+</body>
+</html>
